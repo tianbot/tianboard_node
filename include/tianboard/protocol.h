@@ -6,6 +6,7 @@
 enum {
     PACK_TYPE_CMD_VEL = 0x0001,
     PACK_TYPE_ODOM_RESPONSE = 0x8000,
+    PACK_TYPE_UWB_RESPONSE
 };
 
 #pragma pack(push)
@@ -37,6 +38,14 @@ struct pose {
 struct odom {
     struct pose pose;
     struct twist twist;
+};
+
+struct uwb
+{
+  float x_m;
+  float y_m;
+  float yaw;
+  //uint32_t sig_level;
 };
 
 struct protocol_pack{

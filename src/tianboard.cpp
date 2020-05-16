@@ -165,6 +165,18 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
         }
         break;
 
+    case PACK_TYPE_UWB_RESPONSE:
+        if (sizeof(struct uwb) == p->len - 2)
+        {
+            geometry_msgs::Pose2D pose2d_msg;
+            struct uwb *pUwb = (struct uwb *)(p->data);
+            pose2d_msg.x = pUwb->x_m;
+            pose2d_msg.y = pUwb->y_m;
+            pose2d_msg.theta = pUwb->yaw;
+            uwb_pub_.publish(pose2d_msg);
+        }
+        break;
+
     default:
         break;
     }
@@ -219,7 +231,7 @@ Tianboard::Tianboard(ros::NodeHandle *nh):nh_(*nh)
     nh_.param<std::string>("serial_port", param_serial_port, DEFAULT_SERIAL_DEVICE);
 
     odom_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 1);
-
+    uwb_pub_ = nh_.advertise<geometry_msgs::Pose2D>("uwb", 1);
     cmd_vel_sub_ = nh_.subscribe("cmd_vel", 1, &Tianboard::velocityCallback, this);
 
     if (serial_.open(param_serial_port.c_str(), 115200, 0, 8, 1, 'N',

@@ -4,6 +4,7 @@
 #include "ros/ros.h"
 #include "serial.h"
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/Pose2D.h"
 #include "nav_msgs/Odometry.h"
 #include "boost/bind.hpp"
 #include "boost/function.hpp"
@@ -19,6 +20,7 @@ public:
     //~Tianboard();
 private:
     ros::Publisher odom_pub_;
+    ros::Publisher uwb_pub_;
     ros::Subscriber cmd_vel_sub_;
     ros::NodeHandle nh_;
     Serial serial_;
