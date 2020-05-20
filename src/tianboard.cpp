@@ -1,7 +1,7 @@
 #include "tianboard.h"
 #include "protocol.h"
 #include <vector>
-
+#
 void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
 {
     static uint8_t state = 0;
@@ -141,7 +141,8 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
         {
             nav_msgs::Odometry odom_msg;
             struct odom *pOdom = (struct odom *)(p->data);
-            odom_msg.header.stamp = ros::Time::now();
+            ros::Time current_time = ros::Time::now();
+            odom_msg.header.stamp = current_time;
             odom_msg.header.frame_id = "odom";
 
             odom_msg.pose.pose.position.x = pOdom->pose.point.x;
@@ -162,6 +163,14 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             odom_msg.twist.twist.angular.z = pOdom->twist.angular.z;
             //publish the message
             odom_pub_.publish(odom_msg);
+
+            odom_tf_.header.stamp = current_time;
+            odom_tf_.transform.translation.x = pOdom->pose.point.x;
+            odom_tf_.transform.translation.y = pOdom->pose.point.y;
+            odom_tf_.transform.translation.z = pOdom->pose.point.z;
+
+            odom_tf_.transform.rotation = odom_msg.pose.pose.orientation;
+            tf_broadcaster_.sendTransform(odom_tf_);
         }
         break;
 
