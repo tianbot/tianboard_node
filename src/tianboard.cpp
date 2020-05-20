@@ -243,6 +243,9 @@ Tianboard::Tianboard(ros::NodeHandle *nh):nh_(*nh)
     uwb_pub_ = nh_.advertise<geometry_msgs::Pose2D>("uwb", 1);
     cmd_vel_sub_ = nh_.subscribe("cmd_vel", 1, &Tianboard::velocityCallback, this);
 
+    odom_tf_.header.frame_id = "odom";
+    odom_tf_.child_frame_id = "base_link";
+    
     if (serial_.open(param_serial_port.c_str(), 115200, 0, 8, 1, 'N',
                      boost::bind(&Tianboard::serialDataProc, this, _1, _2)) != true)
     {
