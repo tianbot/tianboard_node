@@ -185,6 +185,8 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             uwb_pub_.publish(pose2d_msg);
         }
         break;
+    case PACK_TYPE_HEART_BEAT_RESPONSE:
+        break;
 
     default:
         break;
@@ -231,6 +233,42 @@ void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr& msg)
     buf.push_back(bcc);
 
     serial_.send(&buf[0], buf.size());
+    heart_timer_.stop();
+    heart_timer_.start();
+}
+
+void Tianboard::heartCallback(const ros::TimerEvent&)
+{
+    uint16_t len;
+    vector<uint8_t> buf;
+    uint16_t dummy = 0;
+    uint8_t bcc = 0;
+    int i;
+    uint8_t *out = (uint8_t *)&dummy;
+    buf.push_back(PROTOCOL_HEAD&0xFF);
+    buf.push_back((PROTOCOL_HEAD>>8)&0xFF);
+
+    len = 2 + sizeof(dummy);
+
+    buf.push_back(len & 0xFF);
+    buf.push_back((len >> 8) & 0xFF);
+
+    buf.push_back(PACK_TYPE_HEART_BEAT & 0xFF);
+    buf.push_back((PACK_TYPE_HEART_BEAT >> 8) & 0xFF);
+
+    for (i = 0; i < sizeof(struct twist); i++)
+    {
+        buf.push_back(out[i]);
+    }
+
+    for (i = 4; i < buf.size(); i++)
+    {
+        bcc ^= buf[i];
+    }
+
+    buf.push_back(bcc);
+
+    serial_.send(&buf[0], buf.size());
 }
 
 Tianboard::Tianboard(ros::NodeHandle *nh):nh_(*nh)
@@ -242,7 +280,8 @@ Tianboard::Tianboard(ros::NodeHandle *nh):nh_(*nh)
     odom_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 1);
     uwb_pub_ = nh_.advertise<geometry_msgs::Pose2D>("uwb", 1);
     cmd_vel_sub_ = nh_.subscribe("cmd_vel", 1, &Tianboard::velocityCallback, this);
-
+    heart_timer_ = nh_.createTimer(ros::Duration(0.1), &Tianboard::heartCallback, this);
+    heart_timer_.start();
     odom_tf_.header.frame_id = "odom";
     odom_tf_.child_frame_id = "base_link";
     
