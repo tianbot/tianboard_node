@@ -106,21 +106,11 @@ void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
             if (bcc == 0)
             {
                 tianboardDataProc(&recv_msg[0], recv_msg.size()); // process recv msg
-                // for (i = 0; i < recv_msg.size(); i++)
-                // {
-                //     printf("%02x", recv_msg[i]);
-                // }
-                // printf("\r\n");
             }
             else
             {
 
                 ROS_INFO("BCC error");
-                // for (i = 0; i < recv_msg.size(); i++)
-                // {
-                //     printf("%02x", recv_msg[i]);
-                // }
-                // printf("\r\n");
             }
             state = 0;
         }
@@ -256,8 +246,8 @@ void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr &msg)
     buf.push_back(bcc);
 
     serial_.send(&buf[0], buf.size());
-    heart_timer_.stop();
-    heart_timer_.start();
+    //heart_timer_.stop();
+    //heart_timer_.start();
 }
 
 void Tianboard::heartCallback(const ros::TimerEvent &)
