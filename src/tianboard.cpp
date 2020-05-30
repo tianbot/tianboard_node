@@ -1,7 +1,7 @@
 #include "tianboard.h"
 #include "protocol.h"
 #include <vector>
-#
+
 void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
 {
     static uint8_t state = 0;
@@ -148,11 +148,8 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             odom_msg.pose.pose.position.x = pOdom->pose.point.x;
             odom_msg.pose.pose.position.y = pOdom->pose.point.y;
             odom_msg.pose.pose.position.z = pOdom->pose.point.z;
-            odom_msg.pose.pose.orientation.x = pOdom->pose.quat.x;
-            odom_msg.pose.pose.orientation.y = pOdom->pose.quat.y;
-            odom_msg.pose.pose.orientation.z = pOdom->pose.quat.z;
-            odom_msg.pose.pose.orientation.w = pOdom->pose.quat.w;
-
+            geometry_msgs::Quaternion q = tf::createQuaternionMsgFromYaw(pOdom->pose.yaw);
+            odom_msg.pose.pose.orientation = q;
             //set the velocity
             odom_msg.child_frame_id = "base_link";
             odom_msg.twist.twist.linear.x = pOdom->twist.linear.x;
@@ -185,7 +182,31 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             uwb_pub_.publish(pose2d_msg);
         }
         break;
+
     case PACK_TYPE_HEART_BEAT_RESPONSE:
+        break;
+
+    case PACK_TYPE_IMU_REPONSE:
+        if (sizeof(struct imu_feedback) == p->len - 2)
+        {
+            sensor_msgs::Imu imu_msg;
+            struct imu_feedback *pImu = (struct imu_feedback *)(p->data);
+
+            ros::Time current_time = ros::Time::now();
+            imu_msg.header.stamp = current_time;
+            imu_msg.header.frame_id = "imu";
+            imu_msg.orientation.x = pImu->quat.x;
+            imu_msg.orientation.y = pImu->quat.y;
+            imu_msg.orientation.z = pImu->quat.z;
+            imu_msg.orientation.w = pImu->quat.w;
+            imu_msg.angular_velocity.x = pImu->angular_vel.x;
+            imu_msg.angular_velocity.y = pImu->angular_vel.y;
+            imu_msg.angular_velocity.z = pImu->angular_vel.z;
+            imu_msg.linear_acceleration.x = pImu->linear_acc.x;
+            imu_msg.linear_acceleration.y = pImu->linear_acc.y;
+            imu_msg.linear_acceleration.z = pImu->linear_acc.z;
+            imu_pub_.publish(imu_msg);
+        }
         break;
 
     default:
@@ -233,8 +254,8 @@ void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr& msg)
     buf.push_back(bcc);
 
     serial_.send(&buf[0], buf.size());
-    heart_timer_.stop();
-    heart_timer_.start();
+    //heart_timer_.stop();
+    //heart_timer_.start();
 }
 
 void Tianboard::heartCallback(const ros::TimerEvent&)
@@ -278,10 +299,11 @@ Tianboard::Tianboard(ros::NodeHandle *nh):nh_(*nh)
     nh_.param<std::string>("serial_port", param_serial_port, DEFAULT_SERIAL_DEVICE);
 
     odom_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 1);
+    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("imu", 1);
     uwb_pub_ = nh_.advertise<geometry_msgs::Pose2D>("uwb", 1);
     cmd_vel_sub_ = nh_.subscribe("cmd_vel", 1, &Tianboard::velocityCallback, this);
-    heart_timer_ = nh_.createTimer(ros::Duration(0.1), &Tianboard::heartCallback, this);
-    heart_timer_.start();
+    //heart_timer_ = nh_.createTimer(ros::Duration(0.2), &Tianboard::heartCallback, this);
+    //heart_timer_.start();
     odom_tf_.header.frame_id = "odom";
     odom_tf_.child_frame_id = "base_link";
     

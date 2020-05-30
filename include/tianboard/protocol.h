@@ -8,7 +8,8 @@ enum {
     PACK_TYPE_CMD_VEL,
     PACK_TYPE_ODOM_RESPONSE = 0x8000,
     PACK_TYPE_UWB_RESPONSE,
-    PACK_TYPE_HEART_BEAT_RESPONSE
+    PACK_TYPE_HEART_BEAT_RESPONSE,
+    PACK_TYPE_IMU_REPONSE
 };
 
 #pragma pack(push)
@@ -34,7 +35,7 @@ struct quaternion {
 
 struct pose {
     struct vector3 point;
-    struct quaternion quat;
+    float yaw;
 };
 
 struct odom {
@@ -48,6 +49,12 @@ struct uwb
   float y_m;
   float yaw;
   //uint32_t sig_level;
+};
+
+struct imu_feedback{
+    struct quaternion quat;
+    struct vector3 linear_acc;
+    struct vector3 angular_vel;
 };
 
 struct protocol_pack{
