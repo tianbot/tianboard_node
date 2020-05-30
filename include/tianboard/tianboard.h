@@ -10,6 +10,7 @@
 #include "boost/bind.hpp"
 #include "boost/function.hpp"
 #include <tf/transform_broadcaster.h>
+#include "sensor_msgs/Imu.h"
 
 #define DEFAULT_SERIAL_DEVICE "/dev/ttyUSB0"
 
@@ -23,10 +24,11 @@ public:
 private:
     ros::Publisher odom_pub_;
     ros::Publisher uwb_pub_;
+    ros::Publisher imu_pub_;
     ros::Subscriber cmd_vel_sub_;
-    ros::Timer heart_timer_;
     geometry_msgs::TransformStamped odom_tf_;
     tf::TransformBroadcaster tf_broadcaster_;
+    ros::Timer heart_timer_;
     ros::NodeHandle nh_;
     Serial serial_;
     void velocityCallback(const geometry_msgs::Twist::ConstPtr& msg);

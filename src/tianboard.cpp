@@ -1,7 +1,7 @@
 #include "tianboard.h"
 #include "protocol.h"
 #include <vector>
-#
+
 void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
 {
     static uint8_t state = 0;
@@ -15,10 +15,10 @@ void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
         switch (state)
         {
         case 0:
-            if (*p == (PROTOCOL_HEAD&0xFF))
+            if (*p == (PROTOCOL_HEAD & 0xFF))
             {
                 recv_msg.clear();
-                recv_msg.push_back(PROTOCOL_HEAD&0xFF);
+                recv_msg.push_back(PROTOCOL_HEAD & 0xFF);
                 state = 1;
             }
             p++;
@@ -26,9 +26,9 @@ void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
             break;
 
         case 1:
-            if (*p == ((PROTOCOL_HEAD>>8)&0xFF))
+            if (*p == ((PROTOCOL_HEAD >> 8) & 0xFF))
             {
-                recv_msg.push_back(((PROTOCOL_HEAD>>8)&0xFF));
+                recv_msg.push_back(((PROTOCOL_HEAD >> 8) & 0xFF));
                 p++;
                 data_len--;
                 state = 2;
@@ -90,39 +90,41 @@ void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
             break;
 
         case 7:
-            {
-                int i;
-                uint8_t bcc = 0;
-                recv_msg.push_back(*p);
-                p++;
-                data_len--;
-                state = 0;
-                for (i = 4; i < recv_msg.size(); i++)
-                {
-                    bcc ^= recv_msg[i];
-                }
+        {
+            int i;
+            uint8_t bcc = 0;
+            recv_msg.push_back(*p);
+            p++;
+            data_len--;
+            state = 0;
 
-                if (bcc == 0)
-                {
-                    tianboardDataProc(&recv_msg[0], recv_msg.size()); // process recv msg
-                    // for (i = 0; i < recv_msg.size(); i++)
-                    // {
-                    //     printf("%02x", recv_msg[i]);
-                    // }
-                    // printf("\r\n");
-                }
-                else
-                {
-                    printf("bcc error len %ld\n", recv_msg.size());
-                    // for (i = 0; i < recv_msg.size(); i++)
-                    // {
-                    //     printf("%02x", recv_msg[i]);
-                    // }
-                    // printf("\r\n");
-                }
-                state = 0;
+            for (i = 4; i < recv_msg.size(); i++)
+            {
+                bcc ^= recv_msg[i];
             }
-            break;
+
+            if (bcc == 0)
+            {
+                tianboardDataProc(&recv_msg[0], recv_msg.size()); // process recv msg
+                // for (i = 0; i < recv_msg.size(); i++)
+                // {
+                //     printf("%02x", recv_msg[i]);
+                // }
+                // printf("\r\n");
+            }
+            else
+            {
+
+                ROS_INFO("BCC error");
+                // for (i = 0; i < recv_msg.size(); i++)
+                // {
+                //     printf("%02x", recv_msg[i]);
+                // }
+                // printf("\r\n");
+            }
+            state = 0;
+        }
+        break;
 
         default:
             state = 0;
@@ -134,7 +136,7 @@ void Tianboard::serialDataProc(uint8_t *data, unsigned int data_len)
 void Tianboard::tianboardDataProc(unsigned char *buf, int len)
 {
     struct protocol_pack *p = (struct protocol_pack *)buf;
-    switch(p->pack_type)
+    switch (p->pack_type)
     {
     case PACK_TYPE_ODOM_RESPONSE:
         if (sizeof(struct odom) == p->len - 2)
@@ -148,11 +150,8 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             odom_msg.pose.pose.position.x = pOdom->pose.point.x;
             odom_msg.pose.pose.position.y = pOdom->pose.point.y;
             odom_msg.pose.pose.position.z = pOdom->pose.point.z;
-            odom_msg.pose.pose.orientation.x = pOdom->pose.quat.x;
-            odom_msg.pose.pose.orientation.y = pOdom->pose.quat.y;
-            odom_msg.pose.pose.orientation.z = pOdom->pose.quat.z;
-            odom_msg.pose.pose.orientation.w = pOdom->pose.quat.w;
-
+            geometry_msgs::Quaternion q = tf::createQuaternionMsgFromYaw(pOdom->pose.yaw);
+            odom_msg.pose.pose.orientation = q;
             //set the velocity
             odom_msg.child_frame_id = "base_link";
             odom_msg.twist.twist.linear.x = pOdom->twist.linear.x;
@@ -185,7 +184,31 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             uwb_pub_.publish(pose2d_msg);
         }
         break;
+
     case PACK_TYPE_HEART_BEAT_RESPONSE:
+        break;
+
+    case PACK_TYPE_IMU_REPONSE:
+        if (sizeof(struct imu_feedback) == p->len - 2)
+        {
+            sensor_msgs::Imu imu_msg;
+            struct imu_feedback *pImu = (struct imu_feedback *)(p->data);
+
+            ros::Time current_time = ros::Time::now();
+            imu_msg.header.stamp = current_time;
+            imu_msg.header.frame_id = "imu";
+            imu_msg.orientation.x = pImu->quat.x;
+            imu_msg.orientation.y = pImu->quat.y;
+            imu_msg.orientation.z = pImu->quat.z;
+            imu_msg.orientation.w = pImu->quat.w;
+            imu_msg.angular_velocity.x = pImu->angular_vel.x;
+            imu_msg.angular_velocity.y = pImu->angular_vel.y;
+            imu_msg.angular_velocity.z = pImu->angular_vel.z;
+            imu_msg.linear_acceleration.x = pImu->linear_acc.x;
+            imu_msg.linear_acceleration.y = pImu->linear_acc.y;
+            imu_msg.linear_acceleration.z = pImu->linear_acc.z;
+            imu_pub_.publish(imu_msg);
+        }
         break;
 
     default:
@@ -193,7 +216,7 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
     }
 }
 
-void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr& msg)
+void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr &msg)
 {
     uint16_t len;
     vector<uint8_t> buf;
@@ -209,8 +232,8 @@ void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr& msg)
     twist.angular.y = msg->angular.y;
     twist.angular.z = msg->angular.z;
 
-    buf.push_back(PROTOCOL_HEAD&0xFF);
-    buf.push_back((PROTOCOL_HEAD>>8)&0xFF);
+    buf.push_back(PROTOCOL_HEAD & 0xFF);
+    buf.push_back((PROTOCOL_HEAD >> 8) & 0xFF);
 
     len = sizeof(struct twist) + 2;
 
@@ -237,7 +260,7 @@ void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr& msg)
     heart_timer_.start();
 }
 
-void Tianboard::heartCallback(const ros::TimerEvent&)
+void Tianboard::heartCallback(const ros::TimerEvent &)
 {
     uint16_t len;
     vector<uint8_t> buf;
@@ -245,8 +268,8 @@ void Tianboard::heartCallback(const ros::TimerEvent&)
     uint8_t bcc = 0;
     int i;
     uint8_t *out = (uint8_t *)&dummy;
-    buf.push_back(PROTOCOL_HEAD&0xFF);
-    buf.push_back((PROTOCOL_HEAD>>8)&0xFF);
+    buf.push_back(PROTOCOL_HEAD & 0xFF);
+    buf.push_back((PROTOCOL_HEAD >> 8) & 0xFF);
 
     len = 2 + sizeof(dummy);
 
@@ -256,7 +279,7 @@ void Tianboard::heartCallback(const ros::TimerEvent&)
     buf.push_back(PACK_TYPE_HEART_BEAT & 0xFF);
     buf.push_back((PACK_TYPE_HEART_BEAT >> 8) & 0xFF);
 
-    for (i = 0; i < sizeof(struct twist); i++)
+    for (i = 0; i < sizeof(dummy); i++)
     {
         buf.push_back(out[i]);
     }
@@ -271,20 +294,21 @@ void Tianboard::heartCallback(const ros::TimerEvent&)
     serial_.send(&buf[0], buf.size());
 }
 
-Tianboard::Tianboard(ros::NodeHandle *nh):nh_(*nh)
+Tianboard::Tianboard(ros::NodeHandle *nh) : nh_(*nh)
 {
     std::string param_serial_port;
 
     nh_.param<std::string>("serial_port", param_serial_port, DEFAULT_SERIAL_DEVICE);
 
     odom_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 1);
+    imu_pub_ = nh_.advertise<sensor_msgs::Imu>("imu", 1);
     uwb_pub_ = nh_.advertise<geometry_msgs::Pose2D>("uwb", 1);
     cmd_vel_sub_ = nh_.subscribe("cmd_vel", 1, &Tianboard::velocityCallback, this);
-    heart_timer_ = nh_.createTimer(ros::Duration(0.1), &Tianboard::heartCallback, this);
+    heart_timer_ = nh_.createTimer(ros::Duration(0.2), &Tianboard::heartCallback, this);
     heart_timer_.start();
     odom_tf_.header.frame_id = "odom";
     odom_tf_.child_frame_id = "base_link";
-    
+
     if (serial_.open(param_serial_port.c_str(), 115200, 0, 8, 1, 'N',
                      boost::bind(&Tianboard::serialDataProc, this, _1, _2)) != true)
     {
