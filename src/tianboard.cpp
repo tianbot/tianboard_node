@@ -135,7 +135,7 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             struct odom *pOdom = (struct odom *)(p->data);
             ros::Time current_time = ros::Time::now();
             odom_msg.header.stamp = current_time;
-            odom_msg.header.frame_id = "odom";
+            odom_msg.header.frame_id = odom_frame_;
 
             odom_msg.pose.pose.position.x = pOdom->pose.point.x;
             odom_msg.pose.pose.position.y = pOdom->pose.point.y;
@@ -143,7 +143,7 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
             geometry_msgs::Quaternion q = tf::createQuaternionMsgFromYaw(pOdom->pose.yaw);
             odom_msg.pose.pose.orientation = q;
             //set the velocity
-            odom_msg.child_frame_id = "base_link";
+            odom_msg.child_frame_id = base_frame_;
             odom_msg.twist.twist.linear.x = pOdom->twist.linear.x;
             odom_msg.twist.twist.linear.y = pOdom->twist.linear.y;
             odom_msg.twist.twist.linear.z = pOdom->twist.linear.z;
@@ -289,15 +289,16 @@ Tianboard::Tianboard(ros::NodeHandle *nh) : nh_(*nh)
     std::string param_serial_port;
 
     nh_.param<std::string>("serial_port", param_serial_port, DEFAULT_SERIAL_DEVICE);
-
+    nh_.param<std::string>("base_frame", base_frame_, DEFAULT_BASE_FRAME);
+    nh_.param<std::string>("odom_frame", odom_frame_, DEFAULT_ODOM_FRAME);
     odom_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 1);
     imu_pub_ = nh_.advertise<sensor_msgs::Imu>("imu", 1);
     uwb_pub_ = nh_.advertise<geometry_msgs::Pose2D>("uwb", 1);
     cmd_vel_sub_ = nh_.subscribe("cmd_vel", 1, &Tianboard::velocityCallback, this);
     heart_timer_ = nh_.createTimer(ros::Duration(0.2), &Tianboard::heartCallback, this);
     heart_timer_.start();
-    odom_tf_.header.frame_id = "odom";
-    odom_tf_.child_frame_id = "base_link";
+    odom_tf_.header.frame_id = odom_frame_;
+    odom_tf_.child_frame_id = base_frame_;
 
     if (serial_.open(param_serial_port.c_str(), 115200, 0, 8, 1, 'N',
                      boost::bind(&Tianboard::serialDataProc, this, _1, _2)) != true)

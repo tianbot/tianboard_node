@@ -13,6 +13,8 @@
 #include "sensor_msgs/Imu.h"
 
 #define DEFAULT_SERIAL_DEVICE "/dev/ttyUSB0"
+#define DEFAULT_BASE_FRAME "base_link"
+#define DEFAULT_ODOM_FRAME "odom"
 
 using namespace std;
 using namespace boost;
@@ -31,6 +33,8 @@ private:
     ros::Timer heart_timer_;
     ros::NodeHandle nh_;
     Serial serial_;
+    std::string base_frame_;
+    std::string odom_frame_;
     void velocityCallback(const geometry_msgs::Twist::ConstPtr& msg);
     void serialDataProc(uint8_t *data, unsigned int data_len);
     void tianboardDataProc(unsigned char *buf, int len);
