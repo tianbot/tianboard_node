@@ -4,7 +4,7 @@
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "tianboard_node");
-    ros::NodeHandle nh("tianboard");
+    ros::NodeHandle nh("~");
     Tianboard tianboard(&nh);
 
     ros::Rate loop_rate(10);
