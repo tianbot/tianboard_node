@@ -31,6 +31,7 @@ private:
     geometry_msgs::TransformStamped odom_tf_;
     tf::TransformBroadcaster tf_broadcaster_;
     ros::Timer heart_timer_;
+    ros::Timer communication_timer_;
     ros::NodeHandle nh_;
     Serial serial_;
     std::string base_frame_;
@@ -39,6 +40,7 @@ private:
     void serialDataProc(uint8_t *data, unsigned int data_len);
     void tianboardDataProc(unsigned char *buf, int len);
     void heartCallback(const ros::TimerEvent&);
+    void communicationErrorCallback(const ros::TimerEvent&);
 };
 
 #endif

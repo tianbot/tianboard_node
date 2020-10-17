@@ -204,6 +204,8 @@ void Tianboard::tianboardDataProc(unsigned char *buf, int len)
     default:
         break;
     }
+    communication_timer_.stop();
+    communication_timer_.start();
 }
 
 void Tianboard::velocityCallback(const geometry_msgs::Twist::ConstPtr &msg)
@@ -284,6 +286,12 @@ void Tianboard::heartCallback(const ros::TimerEvent &)
     serial_.send(&buf[0], buf.size());
 }
 
+void Tianboard::communicationErrorCallback(const ros::TimerEvent &)
+{
+    ROS_ERROR_THROTTLE(5, "Communication with base error");
+}
+
+
 Tianboard::Tianboard(ros::NodeHandle *nh) : nh_(*nh)
 {
     std::string param_serial_port;
@@ -297,6 +305,8 @@ Tianboard::Tianboard(ros::NodeHandle *nh) : nh_(*nh)
     cmd_vel_sub_ = nh_.subscribe("cmd_vel", 1, &Tianboard::velocityCallback, this);
     heart_timer_ = nh_.createTimer(ros::Duration(0.2), &Tianboard::heartCallback, this);
     heart_timer_.start();
+    communication_timer_ = nh_.createTimer(ros::Duration(0.2), &Tianboard::communicationErrorCallback, this);
+    communication_timer_.start();
     odom_tf_.header.frame_id = odom_frame_;
     odom_tf_.child_frame_id = base_frame_;
 
